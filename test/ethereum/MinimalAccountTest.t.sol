@@ -8,11 +8,16 @@ import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
 contract MinimalAccountTest is Test {
+
     MinimalAccount public minimalAccount;
+
     HelperConfig public config;
     DeployMinimalAccount public deployer;
+
     ERC20Mock public usdc;
+
     uint256 constant AMOUNT = 1e18;
+    address public randomUser = makeAddr('randomUser');
 
     function setUp() public {
         deployer = new DeployMinimalAccount();
@@ -30,6 +35,17 @@ contract MinimalAccountTest is Test {
         minimalAccount.execute(dest, value, funcData);
 
         assertEq(usdc.balanceOf(address(minimalAccount)), AMOUNT);
+    }
+
+    function testNonOwnerCannotExecuteComands() public {
+        assertEq(usdc.balanceOf(address(minimalAccount)), 0);
+        address dest = address(usdc);
+        uint256 value = 0;
+        bytes memory funcData = abi.encodeWithSelector(ERC20Mock.mint.selector, address(minimalAccount), AMOUNT);
+
+        vm.prank(randomUser);
+        vm.expectRevert(MinimalAccount.MinimalAccount__NotFromEntryPointOrOwner.selector);
+        minimalAccount.execute(dest, value, funcData);
     }
 }
 
