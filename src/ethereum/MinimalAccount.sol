@@ -36,7 +36,10 @@ contract MinimalAccount is IAccount, Ownable {
 
     // External functions
 
-    function execute(address destination, uint256 value, bytes calldata funcData) external requireFromEntryPointOrOwner {
+    function execute(address destination, uint256 value, bytes calldata funcData)
+        external
+        requireFromEntryPointOrOwner
+    {
         (bool success, bytes memory returnData) = address(destination).call{value: value}(funcData);
         if (!success) revert MinimalAccount__CallFailed(returnData);
     }
