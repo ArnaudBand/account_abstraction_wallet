@@ -11,7 +11,6 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 contract MinimalAccountTest is Test {
-
     using MessageHashUtils for bytes32;
 
     MinimalAccount public minimalAccount;
@@ -70,5 +69,29 @@ contract MinimalAccountTest is Test {
         address actualSigner = ECDSA.recover(userOpHash.toEthSignedMessageHash(), packedUserOp.signature);
         // Assert
         assertEq(actualSigner, minimalAccount.owner());
+    }
+
+    function testValidationOfUserOps() public {
+        // 1. Sign User Ops
+        // 2. Call validate userops
+        // 3. Assert the return is correct
+
+        // Arrange
+        assertEq(usdc.balanceOf(address(minimalAccount)), 0);
+        address dest = address(usdc);
+        uint256 value = 0;
+        bytes memory funcData = abi.encodeWithSelector(ERC20Mock.mint.selector, address(minimalAccount), AMOUNT);
+        bytes memory executeCalData = abi.encodeWithSelector(MinimalAccount.execute.selector, dest, value, funcData);
+        PackedUserOperation memory packedUserOp =
+            sendPackedUserOp.generateSignedUserOperation(executeCalData, config.getConfig());
+
+        bytes32 userOpHash = IEntryPoint(config.getConfig().entryPoint).getUserOpHash(packedUserOp);
+        uint256 missingFunds = 1e18;
+        // Act
+        vm.prank(config.getConfig().entryPoint);
+        uint256 validationData = minimalAccount.validateUserOp(packedUserOp, userOpHash, missingFunds);
+
+        // Assert
+        assertEq(validationData, 0);
     }
 }
