@@ -62,7 +62,7 @@ contract MinimalAccountTest is Test {
         bytes memory funcData = abi.encodeWithSelector(ERC20Mock.mint.selector, address(minimalAccount), AMOUNT);
         bytes memory executeCalData = abi.encodeWithSelector(MinimalAccount.execute.selector, dest, value, funcData);
         PackedUserOperation memory packedUserOp =
-            sendPackedUserOp.generateSignedUserOperation(executeCalData, config.getConfig());
+            sendPackedUserOp.generateSignedUserOperation(executeCalData, config.getConfig(), address(minimalAccount));
 
         bytes32 userOpHash = IEntryPoint(config.getConfig().entryPoint).getUserOpHash(packedUserOp);
         // Act
@@ -83,7 +83,7 @@ contract MinimalAccountTest is Test {
         bytes memory funcData = abi.encodeWithSelector(ERC20Mock.mint.selector, address(minimalAccount), AMOUNT);
         bytes memory executeCalData = abi.encodeWithSelector(MinimalAccount.execute.selector, dest, value, funcData);
         PackedUserOperation memory packedUserOp =
-            sendPackedUserOp.generateSignedUserOperation(executeCalData, config.getConfig());
+            sendPackedUserOp.generateSignedUserOperation(executeCalData, config.getConfig(), address(minimalAccount));
 
         bytes32 userOpHash = IEntryPoint(config.getConfig().entryPoint).getUserOpHash(packedUserOp);
         uint256 missingFunds = 1e18;
@@ -93,5 +93,27 @@ contract MinimalAccountTest is Test {
 
         // Assert
         assertEq(validationData, 0);
+    }
+
+    function testEntryPointCanExecuteCommands() public {
+        // Arrange
+        assertEq(usdc.balanceOf(address(minimalAccount)), 0);
+        address dest = address(usdc);
+        uint256 value = 0;
+        bytes memory funcData = abi.encodeWithSelector(ERC20Mock.mint.selector, address(minimalAccount), AMOUNT);
+        bytes memory executeCalData = abi.encodeWithSelector(MinimalAccount.execute.selector, dest, value, funcData);
+        PackedUserOperation memory packedUserOp =
+            sendPackedUserOp.generateSignedUserOperation(executeCalData, config.getConfig(), address(minimalAccount));
+
+        vm.deal(address(minimalAccount), 1e18); // Prefund the account
+        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        ops[0] = packedUserOp;
+
+        //  Act
+        vm.prank(randomUser);
+        IEntryPoint(config.getConfig().entryPoint).handleOps(ops, payable(randomUser));
+
+        // Assert
+        assertEq(usdc.balanceOf(address(minimalAccount)), AMOUNT);
     }
 }
